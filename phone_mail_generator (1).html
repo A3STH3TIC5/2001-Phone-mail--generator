@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>2001年 携帯メール画面 생성기</title>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Kosugi+Maru&family=Shippori+Mincho&family=Yomogi&family=Reggae+One&family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
+<style>
+  :root{
+    --ink:#232323;
+    --paper:#eae6dd;
+    --paper-card:#f5f2ea;
+    --line:#d8d2c2;
+    --accent:#8a6b3f;       /* worn brass / old electronics accent */
+    --accent-deep:#5f4a2c;
+    --stage-bg-1:#15161a;
+    --stage-bg-2:#26282f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    font-family:'Noto Sans KR','Noto Sans JP',sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+  }
+
+  .wrap{
+    display:grid;
+    grid-template-columns:360px 1fr;
+    min-height:100vh;
+  }
+  @media (max-width:820px){
+    .wrap{grid-template-columns:1fr;}
+  }
+
+  /* ---------- LEFT: control panel ---------- */
+  .panel{
+    background:var(--paper-card);
+    border-right:1px solid var(--line);
+    padding:28px 24px 40px;
+  }
+  .brand{
+    font-size:11px;
+    letter-spacing:.18em;
+    color:var(--accent-deep);
+    text-transform:uppercase;
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  .title{
+    font-size:21px;
+    font-weight:700;
+    line-height:1.4;
+    margin:0 0 4px;
+  }
+  .subtitle{
+    font-size:12.5px;
+    color:#736c5c;
+    line-height:1.6;
+    margin:0 0 26px;
+    border-bottom:1px dashed var(--line);
+    padding-bottom:22px;
+  }
+
+  .field{margin-bottom:20px;}
+  .field label{
+    display:block;
+    font-size:12px;
+    font-weight:600;
+    color:var(--accent-deep);
+    margin-bottom:7px;
+    letter-spacing:.02em;
+  }
+  .field .hint{
+    font-size:10.5px;
+    color:#9a927e;
+    font-weight:400;
+    margin-left:6px;
+  }
+  input[type=text], textarea, select{
+    width:100%;
+    font-family:'Noto Sans KR',sans-serif;
+    font-size:13.5px;
+    padding:9px 11px;
+    border:1px solid var(--line);
+    border-radius:3px;
+    background:#fff;
+    color:var(--ink);
+    resize:vertical;
+  }
+  textarea{min-height:150px; line-height:1.6; font-family:'Noto Sans JP',sans-serif;}
+  input[type=text]:focus, textarea:focus, select:focus{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+  }
+
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+  .tints{display:flex; gap:9px; margin-bottom:14px;}
+  .tint{
+    width:32px; height:32px; border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer;
+    position:relative;
+    box-shadow:0 0 0 1px rgba(0,0,0,.1) inset;
+  }
+  .tint.active{border-color:var(--accent-deep);}
+  .tint.active::after{
+    content:"✓"; position:absolute; inset:0; display:flex;
+    align-items:center; justify-content:center; font-size:13px;
+    color:rgba(0,0,0,.55);
+  }
+
+  .colorgrid{
+    display:grid; grid-template-columns:1fr 1fr; gap:12px;
+  }
+  .colorfield{
+    display:flex; align-items:center; justify-content:space-between;
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:6px 8px 6px 10px;
+    background:#fff;
+  }
+  .colorfield span{font-size:11.5px; color:#5c5544;}
+  .colorfield input[type=color]{
+    width:28px; height:28px; padding:0; border:1px solid var(--line);
+    border-radius:4px; cursor:pointer; background:none;
+  }
+
+  .toggles{display:flex; flex-direction:column; gap:8px;}
+  .toggle-row{
+    display:flex; align-items:center; gap:9px; font-size:13px;
+  }
+  .toggle-row input{width:16px; height:16px;}
+
+  .dl-btn{
+    width:100%;
+    margin-top:8px;
+    padding:13px 14px;
+    border:none;
+    border-radius:3px;
+    background:var(--accent-deep);
+    color:#f5f1e6;
+    font-size:14px;
+    font-weight:700;
+    letter-spacing:.03em;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .dl-btn:hover{background:#4a3a22;}
+  .dl-note{
+    font-size:11px; color:#9a927e; margin-top:9px; line-height:1.6;
+  }
+
+  /* ---------- RIGHT: stage ---------- */
+  .stage{
+    background:
+      radial-gradient(ellipse at 50% 20%, var(--stage-bg-2), var(--stage-bg-1) 70%);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:60px 24px;
+    position:relative;
+    overflow:auto;
+  }
+  .stage::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:radial-gradient(rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size:3px 3px;
+    pointer-events:none;
+  }
+
+  /* ---------- Screen mockup ---------- */
+  #phoneCapture{
+    --capture-padding:40px;
+    padding:var(--capture-padding);
+  }
+  #phoneCapture.show-bounds{
+    outline:1px dashed rgba(255,255,255,.4);
+    outline-offset:-1px;
+  }
+  .screen-bezel{
+    width:250px;
+    background:#0b0c0e;
+    border-radius:14px;
+    padding:10px;
+    box-shadow:
+      0 24px 50px rgba(0,0,0,.55),
+      0 2px 0 rgba(255,255,255,.08) inset,
+      0 0 0 1px rgba(255,255,255,.06);
+  }
+  .screen{
+    --scr-bg:#eef0e4;
+    --scr-fg:#1c1e16;
+    --scr-title-bg:#2b4066;
+    --scr-title-fg:#f4f6ff;
+    --scr-status-bg:#dfe3d3;
+    --scr-status-border:#c7cbb9;
+    --scr-soft-bg:#c9cdba;
+    --scr-soft-border:#b7bba5;
+    --scr-font:'DotGothic16','Noto Sans JP',sans-serif;
+    position:relative;
+    background:var(--scr-bg);
+    border-radius:3px;
+    overflow:hidden;
+    font-family:var(--scr-font);
+    color:var(--scr-fg);
+    box-shadow:0 0 0 1px rgba(0,0,0,.15) inset;
+  }
+
+  .lcd-canvas{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
+    z-index:5;
+    display:block;
+    border-radius:3px;
+  }
+
+  .s-status{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--scr-status-bg);
+    padding:3px 6px;
+    font-size:9px;
+    color:var(--scr-fg);
+    border-bottom:1px solid var(--scr-status-border);
+  }
+  .s-status .icons{display:flex; gap:4px; align-items:center;}
+  .bars{display:flex; align-items:flex-end; gap:1px; height:8px;}
+  .bars i{display:block; width:2px; background:var(--scr-fg);}
+  .bars i:nth-child(1){height:3px;}
+  .bars i:nth-child(2){height:5px;}
+  .bars i:nth-child(3){height:6.5px;}
+  .bars i:nth-child(4){height:8px;}
+  .batt{
+    width:14px; height:7px; border:1px solid var(--scr-fg); border-radius:1px;
+    position:relative; display:inline-block;
+  }
+  .batt::after{content:""; position:absolute; right:-3px; top:1.5px; width:2px; height:4px; background:var(--scr-fg);}
+  .batt::before{content:""; position:absolute; inset:1px; width:60%; background:var(--scr-fg);}
+
+  .s-carrier{
+    font-size:10px; font-weight:700; letter-spacing:.03em;
+    padding:3px 6px 2px;
+    color:var(--scr-fg);
+  }
+
+  .s-title{
+    display:flex; align-items:center; gap:6px;
+    background:var(--scr-title-bg);
+    color:var(--scr-title-fg);
+    padding:5px 7px;
+    font-size:12px;
+  }
+  .s-title .mark{
+    background:var(--scr-title-fg); color:var(--scr-title-bg); font-weight:700;
+    font-size:10px; padding:0 4px; border-radius:2px;
+  }
+  .s-title .ttl{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700;}
+  .s-title .pg{font-size:10px; opacity:.85; white-space:nowrap;}
+
+  .s-body{
+    padding:9px 8px 10px;
+    font-size:12.5px;
+    line-height:1.85;
+    min-height:150px;
+    white-space:pre-wrap;
+    word-break:break-word;
+    background:var(--scr-bg);
+  }
+
+  .s-soft{
+    display:flex; justify-content:space-between; align-items:center;
+    background:var(--scr-soft-bg);
+    border-top:1px solid var(--scr-soft-border);
+    font-size:9.5px;
+    padding:4px 6px;
+    color:var(--scr-fg);
+  }
+  .s-soft span{display:flex; align-items:center; gap:3px;}
+  .s-soft .key{
+    display:inline-block; width:11px; height:11px; border-radius:2px;
+    background:var(--scr-fg); color:var(--scr-bg); font-size:8px; line-height:11px; text-align:center;
+  }
+
+  footer{
+    text-align:center; color:#5c6270; font-size:10.5px; padding:10px 0 26px;
+    letter-spacing:.02em;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ============ CONTROL PANEL ============ -->
+  <div class="panel">
+    <div class="brand">au by KDDI — 2001</div>
+    <h1 class="title">휴대폰 메일 화면<br>생성기</h1>
+    <p class="subtitle">2001年頃 일본 피처폰의 메일/소설 화면만 재현합니다. 값을 입력하면 오른쪽 화면이 바로 바뀝니다.</p>
+
+    <div class="field">
+      <label>화면 색감 <span class="hint">프리셋</span></label>
+      <div class="tints">
+        <div class="tint active" data-tint="green"  style="background:#eef0e4" data-bg="#eef0e4" data-fg="#1c1e16" data-title="#2b4066" data-titlefg="#f4f6ff"></div>
+        <div class="tint" data-tint="blue"   style="background:#dce8f2" data-bg="#dce8f2" data-fg="#122031" data-title="#12385e" data-titlefg="#eaf4ff"></div>
+        <div class="tint" data-tint="amber"  style="background:#2a1a06" data-bg="#2a1a06" data-fg="#ffb238" data-title="#4a2c07" data-titlefg="#ffd27a"></div>
+        <div class="tint" data-tint="white"  style="background:#ffffff" data-bg="#ffffff" data-fg="#111111" data-title="#111111" data-titlefg="#ffffff"></div>
+        <div class="tint" data-tint="pink"   style="background:#fbe3ea" data-bg="#fbe3ea" data-fg="#5a1f34" data-title="#b4527a" data-titlefg="#fff2f6"></div>
+      </div>
+      <div class="colorgrid">
+        <label class="colorfield"><span>배경색</span><input type="color" id="colBg" value="#eef0e4"></label>
+        <label class="colorfield"><span>글자색</span><input type="color" id="colFg" value="#1c1e16"></label>
+        <label class="colorfield"><span>타이틀바</span><input type="color" id="colTitleBg" value="#2b4066"></label>
+        <label class="colorfield"><span>타이틀 글자</span><input type="color" id="colTitleFg" value="#f4f6ff"></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>LCD 화면 효과</label>
+      <div class="toggle-row">
+        <input type="checkbox" id="lcdToggle" checked>
+        <span>스캔라인 / 유리 반사 / 비네트 효과 사용</span>
+      </div>
+      <div style="margin-top:10px;">
+        <input type="range" id="lcdIntensity" min="0" max="100" value="70" style="width:100%;">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>폰트</label>
+      <select id="fontSelect">
+        <option value="'DotGothic16','Noto Sans JP',sans-serif" selected>도트고딕 (일본, 구형 LCD 느낌)</option>
+        <option value="'Galmuri11','Galmuri9',monospace">갈무리11 (한국 도트고딕)</option>
+        <option value="'Galmuri9','Galmuri11',monospace">갈무리9 (한국 도트고딕, 더 작게)</option>
+        <option value="'Galmuri14','Galmuri11',monospace">갈무리14 (한국 도트고딕, 더 크게)</option>
+        <option value="'Noto Sans JP',sans-serif">Noto Sans JP (모던 고딕)</option>
+        <option value="'Kosugi Maru','Noto Sans JP',sans-serif">Kosugi Maru (둥근 고딕)</option>
+        <option value="'Shippori Mincho',serif">Shippori Mincho (명조체)</option>
+        <option value="'Yomogi',cursive">Yomogi (손글씨)</option>
+        <option value="'Reggae One',cursive">Reggae One (굵은 팝체)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>통신사 표시</label>
+      <input type="text" id="carrier" value="au by KDDI" maxlength="20">
+    </div>
+
+    <div class="field row2">
+      <div>
+        <label>제목</label>
+        <input type="text" id="title" value="悪夢療法" maxlength="16">
+      </div>
+      <div>
+        <label>페이지 <span class="hint">예: 1/4</span></label>
+        <input type="text" id="page" value="(1/4)" maxlength="8">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>본문 내용</label>
+      <textarea id="body">いつも半端にサンダルという格好の男が、今夜はスーツにマフラー姿で店に入って来た。ラックの帽子を整理していた仕事中の私は、手を休めてその男の顔を確かめた。深く被った帽子のせいで顔がよく分かるのが日頃の女の客だといつも、私の心の中では小さく舌を巻いた。しかし</textarea>
+    </div>
+
+    <div class="field row2">
+      <div>
+        <label>왼쪽 소프트키</label>
+        <input type="text" id="softLeft" value="戻る" maxlength="6">
+      </div>
+      <div>
+        <label>오른쪽 소프트키</label>
+        <input type="text" id="softRight" value="メニュー" maxlength="6">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>시간 표시</label>
+      <input type="text" id="clock" value="19:24" maxlength="6">
+    </div>
+
+    <div class="field">
+      <label>여백 <span class="hint">저장 시 화면 주위 여백</span></label>
+      <input type="range" id="marginSize" min="0" max="120" value="40" style="width:100%;">
+    </div>
+
+    <div class="field">
+      <label>배경</label>
+      <div class="toggle-row">
+        <input type="checkbox" id="bgTransparent">
+        <span>투명 배경으로 저장</span>
+      </div>
+      <div class="colorfield" style="margin-top:10px;">
+        <span>배경색</span>
+        <input type="color" id="bgColor" value="#1a1c20">
+      </div>
+    </div>
+
+    <button class="dl-btn" id="downloadBtn">화면 이미지로 저장 (PNG)</button>
+    <div class="dl-note">여백과 배경 설정을 포함해 PNG로 저장됩니다.</div>
+  </div>
+
+  <!-- ============ STAGE / PREVIEW ============ -->
+  <div class="stage">
+    <div id="phoneCapture" class="show-bounds">
+      <div class="screen-bezel">
+        <div class="screen" id="screenEl">
+          <canvas class="lcd-canvas" id="lcdCanvas"></canvas>
+          <div class="s-status">
+            <span id="clockOut">19:24</span>
+            <span class="icons">
+              <span class="bars"><i></i><i></i><i></i><i></i></span>
+              <span class="batt"></span>
+            </span>
+          </div>
+          <div class="s-carrier" id="carrierOut">au by KDDI</div>
+          <div class="s-title">
+            <span class="mark">B</span>
+            <span class="ttl" id="titleOut">悪夢療法</span>
+            <span class="pg" id="pageOut">(1/4)</span>
+          </div>
+          <div class="s-body" id="bodyOut"></div>
+          <div class="s-soft">
+            <span><span class="key">◀</span><span id="softLeftOut">戻る</span></span>
+            <span id="softRightOut">メニュー</span><span class="key">▶</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>이 페이지는 2001년경 일본 피처폰 메일/케이타이 소설 화면 감성을 재현하기 위한 팬 제작 목업입니다.</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+
+  function sync(){
+    $('carrierOut').textContent = $('carrier').value || 'au by KDDI';
+    $('titleOut').textContent   = $('title').value || '';
+    $('pageOut').textContent    = $('page').value || '';
+    $('bodyOut').textContent    = $('body').value || '';
+    $('softLeftOut').textContent  = $('softLeft').value || '戻る';
+    $('softRightOut').textContent = $('softRight').value || 'メニュー';
+    $('clockOut').textContent  = $('clock').value || '';
+  }
+  ['carrier','title','page','body','softLeft','softRight','clock'].forEach(id=>{
+    $(id).addEventListener('input', ()=>{ sync(); if (typeof renderLcdCanvas === 'function') renderLcdCanvas(); });
+  });
+  sync();
+
+  // ---- color & font controls ----
+  const screenEl = document.querySelector('.screen');
+
+  function shade(hex, amt){ // amt: 0..1, mixes hex toward black by amt
+    const c = hex.replace('#','');
+    const n = parseInt(c.length===3 ? c.split('').map(ch=>ch+ch).join('') : c, 16);
+    let r = (n>>16)&255, g=(n>>8)&255, b=n&255;
+    r = Math.round(r*(1-amt)); g = Math.round(g*(1-amt)); b = Math.round(b*(1-amt));
+    return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+  }
+
+  function applyColors(){
+    const bg = $('colBg').value;
+    screenEl.style.setProperty('--scr-bg', bg);
+    screenEl.style.setProperty('--scr-fg', $('colFg').value);
+    screenEl.style.setProperty('--scr-title-bg', $('colTitleBg').value);
+    screenEl.style.setProperty('--scr-title-fg', $('colTitleFg').value);
+    screenEl.style.setProperty('--scr-status-bg', shade(bg, 0.15));
+    screenEl.style.setProperty('--scr-status-border', shade(bg, 0.35));
+    screenEl.style.setProperty('--scr-soft-bg', shade(bg, 0.22));
+    screenEl.style.setProperty('--scr-soft-border', shade(bg, 0.40));
+  }
+  ['colBg','colFg','colTitleBg','colTitleFg'].forEach(id=>{
+    $(id).addEventListener('input', ()=>{
+      document.querySelectorAll('.tint').forEach(t=>t.classList.remove('active'));
+      applyColors();
+    });
+  });
+  applyColors();
+
+  document.querySelectorAll('.tint').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      document.querySelectorAll('.tint').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      $('colBg').value = t.dataset.bg;
+      $('colFg').value = t.dataset.fg;
+      $('colTitleBg').value = t.dataset.title;
+      $('colTitleFg').value = t.dataset.titlefg;
+      applyColors();
+    });
+  });
+
+  $('fontSelect').addEventListener('change', ()=>{
+    screenEl.style.setProperty('--scr-font', $('fontSelect').value);
+    renderLcdCanvas();
+  });
+
+  // ---- margin / background controls ----
+  const phoneCapture = document.getElementById('phoneCapture');
+  $('marginSize').addEventListener('input', ()=>{
+    phoneCapture.style.setProperty('--capture-padding', $('marginSize').value+'px');
+  });
+  function syncBgToggle(){
+    $('bgColor').disabled = $('bgTransparent').checked;
+  }
+  $('bgTransparent').addEventListener('change', syncBgToggle);
+  $('bgColor').addEventListener('input', ()=>{
+    $('bgTransparent').checked = false;
+    syncBgToggle();
+  });
+  syncBgToggle();
+
+  // ---- LCD effect (rendered onto a real <canvas>, so it exports exactly as previewed) ----
+  const lcdCanvas = document.getElementById('lcdCanvas');
+
+  function paintLcdEffect(ctx, w, h, intensity){
+    ctx.save();
+
+    ctx.fillStyle = `rgba(0,0,0,${0.18*intensity})`;
+    for(let sy = 0; sy < h; sy += 2){
+      ctx.fillRect(0, sy, w, 1);
+    }
+    ctx.fillStyle = `rgba(0,0,0,${0.07*intensity})`;
+    for(let sx = 0; sx < w; sx += 2){
+      ctx.fillRect(sx, 0, 1, h);
+    }
+    const glare = ctx.createLinearGradient(0, 0, w*0.85, h*0.55);
+    glare.addColorStop(0,    `rgba(255,255,255,${0.20*intensity})`);
+    glare.addColorStop(0.18, `rgba(255,255,255,${0.07*intensity})`);
+    glare.addColorStop(0.38, `rgba(255,255,255,0)`);
+    glare.addColorStop(0.78, `rgba(255,255,255,0)`);
+    glare.addColorStop(1,    `rgba(255,255,255,${0.09*intensity})`);
+    ctx.fillStyle = glare;
+    ctx.fillRect(0, 0, w, h);
+
+    const cx = w/2, cy = h/2;
+    const maxR = Math.sqrt(cx*cx + cy*cy);
+    const vig = ctx.createRadialGradient(cx, cy, maxR*0.55, cx, cy, maxR);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, `rgba(0,0,0,${0.45*intensity})`);
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.restore();
+  }
+
+  function renderLcdCanvas(){
+    const rect = screenEl.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width));
+    const h = Math.max(1, Math.round(rect.height));
+    const dpr = 4; // fixed high-res backing store so it stays crisp after html2canvas upscales it
+    lcdCanvas.width = w*dpr;
+    lcdCanvas.height = h*dpr;
+    lcdCanvas.style.width = w+'px';
+    lcdCanvas.style.height = h+'px';
+    const ctx = lcdCanvas.getContext('2d');
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,w,h);
+    if ($('lcdToggle').checked){
+      paintLcdEffect(ctx, w, h, $('lcdIntensity').value/100);
+    }
+  }
+  $('lcdToggle').addEventListener('change', renderLcdCanvas);
+  $('lcdIntensity').addEventListener('input', renderLcdCanvas);
+  window.addEventListener('resize', renderLcdCanvas);
+  renderLcdCanvas();
+
+  $('downloadBtn').addEventListener('click', async ()=>{
+    const btn = $('downloadBtn');
+    const originalLabel = btn.textContent;
+    btn.textContent = '이미지 생성 중…';
+    btn.disabled = true;
+    try{
+      if (document.fonts && document.fonts.ready) { await document.fonts.ready; }
+      renderLcdCanvas(); // make sure the canvas bitmap is current before capture
+      const target = document.getElementById('phoneCapture');
+      target.classList.remove('show-bounds');
+      const bg = $('bgTransparent').checked ? null : $('bgColor').value;
+      const canvas = await html2canvas(target, {backgroundColor:bg, scale:3});
+      target.classList.add('show-bounds');
+      const link = document.createElement('a');
+      link.download = 'keitai-mail-2001.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }catch(err){
+      console.error('PNG export failed:', err);
+      alert('이미지 저장 중 오류가 발생했어요: ' + err.message);
+    }finally{
+      btn.textContent = originalLabel;
+      btn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
