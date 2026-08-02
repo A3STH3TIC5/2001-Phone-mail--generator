@@ -176,16 +176,37 @@
   #phoneCapture{
     --capture-padding:40px;
     padding:var(--capture-padding);
+    position:relative;
   }
   #phoneCapture.show-bounds{
     outline:1px dashed rgba(255,255,255,.4);
     outline-offset:-1px;
   }
+  #phoneCapture.bg-checker{
+    background-image:
+      repeating-conic-gradient(#3a3c42 0% 25%, #2b2d32 0% 50%);
+    background-size:16px 16px;
+  }
+  .drop-shadow-canvas{
+    position:absolute;
+    left:0; top:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
+    z-index:0;
+  }
   .screen-bezel{
+    position:relative;
+    z-index:1;
     width:250px;
     background:#0b0c0e;
     border-radius:14px;
     padding:10px;
+    box-shadow:
+      0 2px 0 rgba(255,255,255,.08) inset,
+      0 0 0 1px rgba(255,255,255,.06);
+  }
+  .screen-bezel.with-drop-shadow{
     box-shadow:
       0 24px 50px rgba(0,0,0,.55),
       0 2px 0 rgba(255,255,255,.08) inset,
@@ -327,7 +348,7 @@
         <span>스캔라인 / 유리 반사 / 비네트 효과 사용</span>
       </div>
       <div style="margin-top:10px;">
-        <input type="range" id="lcdIntensity" min="0" max="100" value="70" style="width:100%;">
+        <input type="range" id="lcdIntensity" min="0" max="100" value="45" style="width:100%;">
       </div>
     </div>
 
@@ -389,6 +410,14 @@
     </div>
 
     <div class="field">
+      <label>입체 그림자</label>
+      <div class="toggle-row">
+        <input type="checkbox" id="shadowToggle" checked>
+        <span>휴대폰 아래에 그림자 표시 (저장 시에도 포함)</span>
+      </div>
+    </div>
+
+    <div class="field">
       <label>배경</label>
       <div class="toggle-row">
         <input type="checkbox" id="bgTransparent">
@@ -407,7 +436,8 @@
   <!-- ============ STAGE / PREVIEW ============ -->
   <div class="stage">
     <div id="phoneCapture" class="show-bounds">
-      <div class="screen-bezel">
+      <canvas id="dropShadowCanvas" class="drop-shadow-canvas"></canvas>
+      <div class="screen-bezel with-drop-shadow" id="screenBezel">
         <div class="screen" id="screenEl">
           <canvas class="lcd-canvas" id="lcdCanvas"></canvas>
           <div class="s-status">
@@ -439,6 +469,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
   const $ = id => document.getElementById(id);
+  const EXPORT_SCALE = 3; // used consistently everywhere so canvas resolution always matches the export resolution exactly (no extra resampling = no moiré)
 
   function sync(){
     $('carrierOut').textContent = $('carrier').value || 'au by KDDI';
@@ -507,7 +538,15 @@
     phoneCapture.style.setProperty('--capture-padding', $('marginSize').value+'px');
   });
   function syncBgToggle(){
-    $('bgColor').disabled = $('bgTransparent').checked;
+    const transparent = $('bgTransparent').checked;
+    $('bgColor').disabled = transparent;
+    if (transparent){
+      phoneCapture.style.backgroundColor = 'transparent';
+      phoneCapture.classList.add('bg-checker');
+    } else {
+      phoneCapture.style.backgroundColor = $('bgColor').value;
+      phoneCapture.classList.remove('bg-checker');
+    }
   }
   $('bgTransparent').addEventListener('change', syncBgToggle);
   $('bgColor').addEventListener('input', ()=>{
@@ -519,8 +558,23 @@
   // ---- LCD effect (rendered onto a real <canvas>, so it exports exactly as previewed) ----
   const lcdCanvas = document.getElementById('lcdCanvas');
 
+  function roundRectPath(ctx, x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y, x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x, y+h, r);
+    ctx.arcTo(x, y+h, x, y, r);
+    ctx.arcTo(x, y, x+w, y, r);
+    ctx.closePath();
+  }
+
   function paintLcdEffect(ctx, w, h, intensity){
     ctx.save();
+    // clip to the screen's own rounded corners: html2canvas doesn't reliably clip
+    // a raw <canvas> child to a parent's border-radius/overflow:hidden on export,
+    // so this canvas has to enforce its own corner shape to avoid bleeding into the bezel.
+    roundRectPath(ctx, 0, 0, w, h, 3);
+    ctx.clip();
 
     ctx.fillStyle = `rgba(0,0,0,${0.18*intensity})`;
     for(let sy = 0; sy < h; sy += 2){
@@ -530,12 +584,11 @@
     for(let sx = 0; sx < w; sx += 2){
       ctx.fillRect(sx, 0, 1, h);
     }
-    const glare = ctx.createLinearGradient(0, 0, w*0.85, h*0.55);
-    glare.addColorStop(0,    `rgba(255,255,255,${0.20*intensity})`);
-    glare.addColorStop(0.18, `rgba(255,255,255,${0.07*intensity})`);
-    glare.addColorStop(0.38, `rgba(255,255,255,0)`);
-    glare.addColorStop(0.78, `rgba(255,255,255,0)`);
-    glare.addColorStop(1,    `rgba(255,255,255,${0.09*intensity})`);
+    const glare = ctx.createLinearGradient(0, 0, w*0.6, h*0.4);
+    glare.addColorStop(0,    `rgba(255,255,255,${0.14*intensity})`);
+    glare.addColorStop(0.25, `rgba(255,255,255,${0.05*intensity})`);
+    glare.addColorStop(0.5,  `rgba(255,255,255,0)`);
+    glare.addColorStop(1,    `rgba(255,255,255,0)`);
     ctx.fillStyle = glare;
     ctx.fillRect(0, 0, w, h);
 
@@ -554,11 +607,9 @@
     const rect = screenEl.getBoundingClientRect();
     const w = Math.max(1, Math.round(rect.width));
     const h = Math.max(1, Math.round(rect.height));
-    const dpr = 4; // fixed high-res backing store so it stays crisp after html2canvas upscales it
+    const dpr = EXPORT_SCALE; // matches the export scale exactly so html2canvas never has to resample this canvas (avoids moiré on the fine repeating scanline/pixel-grid pattern)
     lcdCanvas.width = w*dpr;
     lcdCanvas.height = h*dpr;
-    lcdCanvas.style.width = w+'px';
-    lcdCanvas.style.height = h+'px';
     const ctx = lcdCanvas.getContext('2d');
     ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.clearRect(0,0,w,h);
@@ -569,7 +620,58 @@
   $('lcdToggle').addEventListener('change', renderLcdCanvas);
   $('lcdIntensity').addEventListener('input', renderLcdCanvas);
   window.addEventListener('resize', renderLcdCanvas);
+  new ResizeObserver(renderLcdCanvas).observe(screenEl);
   renderLcdCanvas();
+
+  // ---- drop shadow (also rendered onto a real <canvas> — CSS box-shadow blur
+  // is unreliable in html2canvas, especially combined with border-radius) ----
+  const dropShadowCanvas = document.getElementById('dropShadowCanvas');
+  const bezelEl = document.getElementById('screenBezel');
+
+  function renderDropShadow(){
+    const capRect = phoneCapture.getBoundingClientRect();
+    const w = Math.max(1, Math.round(capRect.width));
+    const h = Math.max(1, Math.round(capRect.height));
+    const dpr = EXPORT_SCALE;
+    dropShadowCanvas.width = w*dpr;
+    dropShadowCanvas.height = h*dpr;
+    const ctx = dropShadowCanvas.getContext('2d');
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,w,h);
+    if (!$('shadowToggle').checked) return;
+
+    const bezRect = bezelEl.getBoundingClientRect();
+    const bx = bezRect.left - capRect.left;
+    const by = bezRect.top - capRect.top;
+    const bw = bezRect.width;
+    const bh = bezRect.height;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 34;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 18;
+    ctx.fillStyle = '#0b0c0e'; // matches the bezel's own color, so only the shadow reads visually
+    roundRectPath(ctx, bx, by, bw, bh, 14);
+    ctx.fill();
+    ctx.restore();
+  }
+  function applyShadowToggle(){
+    bezelEl.classList.toggle('with-drop-shadow', $('shadowToggle').checked);
+    renderDropShadow();
+  }
+  $('shadowToggle').addEventListener('change', applyShadowToggle);
+  window.addEventListener('resize', renderDropShadow);
+  new ResizeObserver(renderDropShadow).observe(phoneCapture);
+  new ResizeObserver(renderDropShadow).observe(bezelEl);
+  applyShadowToggle();
+
+  // keep both canvases in sync whenever something could change the bezel's size/position
+  $('marginSize').addEventListener('input', renderDropShadow);
+  ['carrier','title','page','body','softLeft','softRight','clock'].forEach(id=>{
+    $(id).addEventListener('input', renderDropShadow);
+  });
+  $('fontSelect').addEventListener('change', renderDropShadow);
 
   $('downloadBtn').addEventListener('click', async ()=>{
     const btn = $('downloadBtn');
@@ -578,16 +680,23 @@
     btn.disabled = true;
     try{
       if (document.fonts && document.fonts.ready) { await document.fonts.ready; }
-      renderLcdCanvas(); // make sure the canvas bitmap is current before capture
+      renderLcdCanvas();  // make sure the LCD canvas bitmap is current before capture
+      renderDropShadow(); // make sure the shadow canvas bitmap is current before capture
       const target = document.getElementById('phoneCapture');
       target.classList.remove('show-bounds');
-      const bg = $('bgTransparent').checked ? null : $('bgColor').value;
-      const canvas = await html2canvas(target, {backgroundColor:bg, scale:3});
-      target.classList.add('show-bounds');
-      const link = document.createElement('a');
-      link.download = 'keitai-mail-2001.png';
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      target.classList.remove('bg-checker');
+      bezelEl.classList.remove('with-drop-shadow'); // CSS box-shadow blur is unreliable in html2canvas; the canvas-drawn shadow replaces it for export
+      try{
+        const canvas = await html2canvas(target, {backgroundColor:null, scale:EXPORT_SCALE});
+        const link = document.createElement('a');
+        link.download = 'keitai-mail-2001.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }finally{
+        target.classList.add('show-bounds');
+        if ($('bgTransparent').checked) target.classList.add('bg-checker');
+        if ($('shadowToggle').checked) bezelEl.classList.add('with-drop-shadow');
+      }
     }catch(err){
       console.error('PNG export failed:', err);
       alert('이미지 저장 중 오류가 발생했어요: ' + err.message);
