@@ -224,7 +224,7 @@
     --scr-font:'DotGothic16','Noto Sans JP',sans-serif;
     position:relative;
     background:var(--scr-bg);
-    border-radius:3px;
+    border-radius:0;
     overflow:hidden;
     font-family:var(--scr-font);
     color:var(--scr-fg);
@@ -239,30 +239,26 @@
     pointer-events:none;
     z-index:5;
     display:block;
-    border-radius:3px;
+    border-radius:0;
   }
 
   .s-status{
-    display:flex; align-items:center; justify-content:space-between;
+    position:relative;
     background:var(--scr-status-bg);
     padding:3px 6px;
+    min-height:11px;
     font-size:9px;
     color:var(--scr-fg);
     border-bottom:1px solid var(--scr-status-border);
   }
-  .s-status .icons{display:flex; gap:4px; align-items:center;}
-  .bars{display:flex; align-items:flex-end; gap:1px; height:8px;}
-  .bars i{display:block; width:2px; background:var(--scr-fg);}
-  .bars i:nth-child(1){height:3px;}
-  .bars i:nth-child(2){height:5px;}
-  .bars i:nth-child(3){height:6.5px;}
-  .bars i:nth-child(4){height:8px;}
-  .batt{
-    width:14px; height:7px; border:1px solid var(--scr-fg); border-radius:1px;
-    position:relative; display:inline-block;
+  .status-icons{
+    position:absolute;
+    right:6px;
+    top:50%;
+    transform:translateY(-50%);
+    display:block;
+    color:var(--scr-fg);
   }
-  .batt::after{content:""; position:absolute; right:-3px; top:1.5px; width:2px; height:4px; background:var(--scr-fg);}
-  .batt::before{content:""; position:absolute; inset:1px; width:60%; background:var(--scr-fg);}
 
   .s-carrier{
     font-size:10px; font-weight:700; letter-spacing:.03em;
@@ -295,14 +291,24 @@
   }
 
   .s-soft{
-    display:flex; justify-content:space-between; align-items:center;
+    position:relative;
     background:var(--scr-soft-bg);
     border-top:1px solid var(--scr-soft-border);
     font-size:9.5px;
+    min-height:11px;
     padding:4px 6px;
     color:var(--scr-fg);
   }
-  .s-soft span{display:flex; align-items:center; gap:3px;}
+  .soft-left{ display:inline-block; }
+  .soft-left .key{ display:inline-block; vertical-align:middle; }
+  .soft-center{
+    position:absolute; left:50%; top:50%;
+    transform:translate(-50%,-50%);
+  }
+  .soft-right-key{
+    position:absolute; right:6px; top:50%;
+    transform:translateY(-50%);
+  }
   .s-soft .key{
     display:inline-block; width:11px; height:11px; border-radius:2px;
     background:var(--scr-fg); color:var(--scr-bg); font-size:8px; line-height:11px; text-align:center;
@@ -433,88 +439,335 @@
     <div class="dl-note">여백과 배경 설정을 포함해 PNG로 저장됩니다.</div>
   </div>
 
-  <!-- ============ STAGE / PREVIEW ============ -->
+  <!-- ============ STAGE / PREVIEW (pure Canvas 2D — no DOM-to-image conversion) ============ -->
   <div class="stage">
-    <div id="phoneCapture" class="show-bounds">
-      <canvas id="dropShadowCanvas" class="drop-shadow-canvas"></canvas>
-      <div class="screen-bezel with-drop-shadow" id="screenBezel">
-        <div class="screen" id="screenEl">
-          <canvas class="lcd-canvas" id="lcdCanvas"></canvas>
-          <div class="s-status">
-            <span id="clockOut">19:24</span>
-            <span class="icons">
-              <span class="bars"><i></i><i></i><i></i><i></i></span>
-              <span class="batt"></span>
-            </span>
-          </div>
-          <div class="s-carrier" id="carrierOut">au by KDDI</div>
-          <div class="s-title">
-            <span class="mark">B</span>
-            <span class="ttl" id="titleOut">悪夢療法</span>
-            <span class="pg" id="pageOut">(1/4)</span>
-          </div>
-          <div class="s-body" id="bodyOut"></div>
-          <div class="s-soft">
-            <span><span class="key">◀</span><span id="softLeftOut">戻る</span></span>
-            <span id="softRightOut">メニュー</span><span class="key">▶</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    <canvas id="mockupCanvas"></canvas>
   </div>
 </div>
 
 <footer>이 페이지는 2001년경 일본 피처폰 메일/케이타이 소설 화면 감성을 재현하기 위한 팬 제작 목업입니다.</footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
   const $ = id => document.getElementById(id);
-  const EXPORT_SCALE = 3; // used consistently everywhere so canvas resolution always matches the export resolution exactly (no extra resampling = no moiré)
+  const canvas = document.getElementById('mockupCanvas');
+  const ctx = canvas.getContext('2d');
+  const RENDER_SCALE = 3; // internal resolution multiplier — this IS the exported resolution, live preview and download are the exact same pixels
 
-  function sync(){
-    $('carrierOut').textContent = $('carrier').value || 'au by KDDI';
-    $('titleOut').textContent   = $('title').value || '';
-    $('pageOut').textContent    = $('page').value || '';
-    $('bodyOut').textContent    = $('body').value || '';
-    $('softLeftOut').textContent  = $('softLeft').value || '戻る';
-    $('softRightOut').textContent = $('softRight').value || 'メニュー';
-    $('clockOut').textContent  = $('clock').value || '';
-  }
-  ['carrier','title','page','body','softLeft','softRight','clock'].forEach(id=>{
-    $(id).addEventListener('input', ()=>{ sync(); if (typeof renderLcdCanvas === 'function') renderLcdCanvas(); });
-  });
-  sync();
+  // ---------- layout constants (logical / CSS-like px) ----------
+  const BEZEL_RADIUS = 14;
+  const BEZEL_PAD = 10;
+  const SCREEN_W = 230;
+  const STATUS_H = 18, CARRIER_H = 20, TITLE_H = 30, SOFT_H = 20;
+  const BODY_PAD_TOP = 9, BODY_PAD_BOTTOM = 10, BODY_PAD_X = 8;
+  const BODY_FONT_SIZE = 12.5, BODY_LINE_HEIGHT = 23, BODY_MIN_HEIGHT = 150;
 
-  // ---- color & font controls ----
-  const screenEl = document.querySelector('.screen');
-
-  function shade(hex, amt){ // amt: 0..1, mixes hex toward black by amt
+  function shade(hex, amt){
     const c = hex.replace('#','');
     const n = parseInt(c.length===3 ? c.split('').map(ch=>ch+ch).join('') : c, 16);
-    let r = (n>>16)&255, g=(n>>8)&255, b=n&255;
-    r = Math.round(r*(1-amt)); g = Math.round(g*(1-amt)); b = Math.round(b*(1-amt));
+    let r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+    r=Math.round(r*(1-amt)); g=Math.round(g*(1-amt)); b=Math.round(b*(1-amt));
     return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
   }
-
-  function applyColors(){
-    const bg = $('colBg').value;
-    screenEl.style.setProperty('--scr-bg', bg);
-    screenEl.style.setProperty('--scr-fg', $('colFg').value);
-    screenEl.style.setProperty('--scr-title-bg', $('colTitleBg').value);
-    screenEl.style.setProperty('--scr-title-fg', $('colTitleFg').value);
-    screenEl.style.setProperty('--scr-status-bg', shade(bg, 0.15));
-    screenEl.style.setProperty('--scr-status-border', shade(bg, 0.35));
-    screenEl.style.setProperty('--scr-soft-bg', shade(bg, 0.22));
-    screenEl.style.setProperty('--scr-soft-border', shade(bg, 0.40));
+  function roundRectPath(c, x, y, w, h, r){
+    c.beginPath();
+    c.moveTo(x+r, y);
+    c.arcTo(x+w, y, x+w, y+h, r);
+    c.arcTo(x+w, y+h, x, y+h, r);
+    c.arcTo(x, y+h, x, y, r);
+    c.arcTo(x, y, x+w, y, r);
+    c.closePath();
   }
-  ['colBg','colFg','colTitleBg','colTitleFg'].forEach(id=>{
-    $(id).addEventListener('input', ()=>{
-      document.querySelectorAll('.tint').forEach(t=>t.classList.remove('active'));
-      applyColors();
-    });
-  });
-  applyColors();
+  function primaryFontName(stack){
+    const m = stack.match(/'([^']+)'/);
+    return m ? m[1] : stack.split(',')[0].trim();
+  }
+  function wrapText(c, text, maxWidth){
+    const paragraphs = text.split('\n');
+    const lines = [];
+    for (const para of paragraphs){
+      if (para.length === 0){ lines.push(''); continue; }
+      let line = '';
+      for (const ch of para){
+        const test = line + ch;
+        if (c.measureText(test).width > maxWidth && line.length > 0){
+          lines.push(line);
+          line = ch;
+        } else {
+          line = test;
+        }
+      }
+      lines.push(line);
+    }
+    return lines;
+  }
+  function truncateToWidth(c, text, maxWidth){
+    if (c.measureText(text).width <= maxWidth) return text;
+    let t = text;
+    while (t.length > 0 && c.measureText(t + '…').width > maxWidth){ t = t.slice(0, -1); }
+    return t + '…';
+  }
 
+  function paintLcdEffect(c, w, h, intensity){
+    c.save();
+    c.fillStyle = `rgba(0,0,0,${0.18*intensity})`;
+    for(let sy = 0; sy < h; sy += 2){ c.fillRect(0, sy, w, 1); }
+    c.fillStyle = `rgba(0,0,0,${0.07*intensity})`;
+    for(let sx = 0; sx < w; sx += 2){ c.fillRect(sx, 0, 1, h); }
+    const glare = c.createLinearGradient(0, 0, w*0.6, h*0.4);
+    glare.addColorStop(0,    `rgba(255,255,255,${0.14*intensity})`);
+    glare.addColorStop(0.25, `rgba(255,255,255,${0.05*intensity})`);
+    glare.addColorStop(0.5,  `rgba(255,255,255,0)`);
+    glare.addColorStop(1,    `rgba(255,255,255,0)`);
+    c.fillStyle = glare;
+    c.fillRect(0, 0, w, h);
+    const cx = w/2, cy = h/2;
+    const maxR = Math.sqrt(cx*cx + cy*cy);
+    const vig = c.createRadialGradient(cx, cy, maxR*0.55, cx, cy, maxR);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, `rgba(0,0,0,${0.45*intensity})`);
+    c.fillStyle = vig;
+    c.fillRect(0, 0, w, h);
+    c.restore();
+  }
+
+  function drawStatusIcons(c, x, y, fg){
+    c.save();
+    c.fillStyle = fg;
+    c.fillRect(x+0, y+7, 2, 3);
+    c.fillRect(x+3, y+5, 2, 5);
+    c.fillRect(x+6, y+3, 2, 7);
+    c.fillRect(x+9, y+0, 2, 10);
+    c.strokeStyle = fg;
+    c.lineWidth = 1;
+    roundRectPath(c, x+17, y+1, 16, 8, 1);
+    c.stroke();
+    c.fillRect(x+18.5, y+2.5, 10, 5);
+    c.fillRect(x+34, y+3.5, 1.5, 3);
+    c.restore();
+  }
+
+  let fontsReady = false;
+
+  async function preloadFonts(){
+    const names = [...new Set(Array.from(document.querySelectorAll('#fontSelect option')).map(o => primaryFontName(o.value)))];
+    try{
+      await Promise.all(names.flatMap(name => [
+        document.fonts.load(`400 14px "${name}"`),
+        document.fonts.load(`700 14px "${name}"`)
+      ]));
+      await document.fonts.ready;
+    }catch(e){ console.warn('font preload issue', e); }
+    fontsReady = true;
+    render();
+  }
+
+  function render(forExport){
+    const fontStack = $('fontSelect').value;
+    const bg = $('colBg').value;
+    const fg = $('colFg').value;
+    const titleBg = $('colTitleBg').value;
+    const titleFg = $('colTitleFg').value;
+    const statusBg = shade(bg, 0.15);
+    const statusBorder = shade(bg, 0.35);
+    const softBg = shade(bg, 0.22);
+    const softBorder = shade(bg, 0.40);
+
+    const clock = $('clock').value || '';
+    const carrier = $('carrier').value || 'au by KDDI';
+    const title = $('title').value || '';
+    const page = $('page').value || '';
+    const bodyText = $('body').value || '';
+    const softLeft = $('softLeft').value || '戻る';
+    const softRight = $('softRight').value || 'メニュー';
+
+    // measure body wrapping using the real font
+    ctx.font = `${BODY_FONT_SIZE}px ${fontStack}`;
+    const lines = wrapText(ctx, bodyText, SCREEN_W - BODY_PAD_X*2);
+    const bodyContentH = lines.length * BODY_LINE_HEIGHT;
+    const bodyH = Math.max(BODY_MIN_HEIGHT, bodyContentH + BODY_PAD_TOP + BODY_PAD_BOTTOM);
+
+    const screenH = STATUS_H + CARRIER_H + TITLE_H + bodyH + SOFT_H;
+    const bezelW = SCREEN_W + BEZEL_PAD*2;
+    const bezelH = BEZEL_PAD*2 + screenH;
+    const margin = parseInt($('marginSize').value, 10);
+    const totalW = bezelW + margin*2;
+    const totalH = bezelH + margin*2;
+
+    canvas.width = totalW * RENDER_SCALE;
+    canvas.height = totalH * RENDER_SCALE;
+    canvas.style.width = totalW + 'px';
+    canvas.style.height = totalH + 'px';
+    ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
+    ctx.clearRect(0, 0, totalW, totalH);
+
+    const transparent = $('bgTransparent').checked;
+    if (!transparent){
+      ctx.fillStyle = $('bgColor').value;
+      ctx.fillRect(0, 0, totalW, totalH);
+    } else if (!forExport){
+      const cell = 16;
+      for (let cy = 0; cy < totalH; cy += cell){
+        for (let cx = 0; cx < totalW; cx += cell){
+          const odd = ((cx/cell)|0 + (cy/cell)|0) % 2;
+          ctx.fillStyle = odd ? '#2b2d32' : '#3a3c42';
+          ctx.fillRect(cx, cy, cell, cell);
+        }
+      }
+    }
+
+    const bx = margin, by = margin;
+
+    // drop shadow (drawn before the bezel so it sits behind it)
+    if ($('shadowToggle').checked){
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.55)';
+      ctx.shadowBlur = 34;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 18;
+      ctx.fillStyle = '#0b0c0e';
+      roundRectPath(ctx, bx, by, bezelW, bezelH, BEZEL_RADIUS);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // bezel
+    ctx.save();
+    ctx.fillStyle = '#0b0c0e';
+    roundRectPath(ctx, bx, by, bezelW, bezelH, BEZEL_RADIUS);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    roundRectPath(ctx, bx+0.5, by+0.5, bezelW-1, bezelH-1, BEZEL_RADIUS);
+    ctx.stroke();
+    ctx.restore();
+
+    const sx = bx + BEZEL_PAD, sy = by + BEZEL_PAD;
+    let rowY = sy;
+
+    // status bar
+    ctx.fillStyle = statusBg;
+    ctx.fillRect(sx, rowY, SCREEN_W, STATUS_H);
+    ctx.strokeStyle = statusBorder;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx, rowY+STATUS_H-0.5); ctx.lineTo(sx+SCREEN_W, rowY+STATUS_H-0.5); ctx.stroke();
+    ctx.fillStyle = fg;
+    ctx.font = `${9 * (2/3)}px ${fontStack}`; // ~9px visual size to match original design
+    ctx.font = `9px ${fontStack}`;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillText(clock, sx+6, rowY + STATUS_H/2 + 1);
+    drawStatusIcons(ctx, sx + SCREEN_W - 6 - 36, rowY + (STATUS_H-10)/2, fg);
+    rowY += STATUS_H;
+
+    // carrier bar
+    ctx.fillStyle = bg;
+    ctx.fillRect(sx, rowY, SCREEN_W, CARRIER_H);
+    ctx.fillStyle = fg;
+    ctx.font = `bold 10px ${fontStack}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(carrier, sx+6, rowY + CARRIER_H/2 + 1);
+    rowY += CARRIER_H;
+
+    // title bar
+    ctx.fillStyle = titleBg;
+    ctx.fillRect(sx, rowY, SCREEN_W, TITLE_H);
+    const badgeX = sx+7, badgeY = rowY + (TITLE_H-16)/2, badgeW = 18, badgeH = 16;
+    ctx.fillStyle = titleFg;
+    roundRectPath(ctx, badgeX, badgeY, badgeW, badgeH, 2);
+    ctx.fill();
+    ctx.fillStyle = titleBg;
+    ctx.font = `bold 10px ${fontStack}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('B', badgeX+badgeW/2, badgeY+badgeH/2+1);
+
+    ctx.font = `bold 12px ${fontStack}`;
+    ctx.textAlign = 'right';
+    ctx.fillStyle = titleFg;
+    const pageX = sx + SCREEN_W - 7;
+    ctx.font = `10px ${fontStack}`;
+    ctx.globalAlpha = 0.85;
+    ctx.fillText(page, pageX, rowY + TITLE_H/2 + 1);
+    ctx.globalAlpha = 1;
+    const pageW = ctx.measureText(page).width;
+
+    ctx.font = `bold 12px ${fontStack}`;
+    ctx.textAlign = 'left';
+    const titleX = badgeX + badgeW + 6;
+    const titleMaxW = (pageX - pageW - 8) - titleX;
+    const titleShown = truncateToWidth(ctx, title, Math.max(10, titleMaxW));
+    ctx.fillText(titleShown, titleX, rowY + TITLE_H/2 + 1);
+    rowY += TITLE_H;
+
+    // body
+    ctx.fillStyle = bg;
+    ctx.fillRect(sx, rowY, SCREEN_W, bodyH);
+    ctx.fillStyle = fg;
+    ctx.font = `${BODY_FONT_SIZE}px ${fontStack}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    let ly = rowY + BODY_PAD_TOP + BODY_FONT_SIZE;
+    for (const line of lines){
+      ctx.fillText(line, sx + BODY_PAD_X, ly);
+      ly += BODY_LINE_HEIGHT;
+    }
+    rowY += bodyH;
+
+    // soft key bar
+    ctx.fillStyle = softBg;
+    ctx.fillRect(sx, rowY, SCREEN_W, SOFT_H);
+    ctx.strokeStyle = softBorder;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx, rowY+0.5); ctx.lineTo(sx+SCREEN_W, rowY+0.5); ctx.stroke();
+
+    ctx.font = `9.5px ${fontStack}`;
+    ctx.textBaseline = 'middle';
+    const keyY = rowY + SOFT_H/2;
+    // left key + label
+    ctx.fillStyle = fg;
+    roundRectPath(ctx, sx+6, keyY-5.5, 11, 11, 2);
+    ctx.fill();
+    ctx.fillStyle = bg;
+    ctx.font = `8px ${fontStack}`;
+    ctx.textAlign = 'center';
+    ctx.fillText('◀', sx+6+5.5, keyY+1);
+    ctx.fillStyle = fg;
+    ctx.font = `9.5px ${fontStack}`;
+    ctx.textAlign = 'left';
+    ctx.fillText(softLeft, sx+6+11+3, keyY+1);
+    // center label
+    ctx.textAlign = 'center';
+    ctx.fillText(softRight, sx+SCREEN_W/2, keyY+1);
+    // right key
+    ctx.fillStyle = fg;
+    roundRectPath(ctx, sx+SCREEN_W-6-11, keyY-5.5, 11, 11, 2);
+    ctx.fill();
+    ctx.fillStyle = bg;
+    ctx.font = `8px ${fontStack}`;
+    ctx.textAlign = 'center';
+    ctx.fillText('▶', sx+SCREEN_W-6-5.5, keyY+1);
+
+    // LCD overlay, on top of the whole screen area only
+    if ($('lcdToggle').checked){
+      ctx.save();
+      ctx.translate(sx, sy);
+      paintLcdEffect(ctx, SCREEN_W, screenH, $('lcdIntensity').value/100);
+      ctx.restore();
+    }
+
+    // crop-bounds indicator (preview only, never in the exported file)
+    if (!forExport){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,.4)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4,3]);
+      ctx.strokeRect(0.5, 0.5, totalW-1, totalH-1);
+      ctx.restore();
+    }
+  }
+
+  // ---- tint presets ----
   document.querySelectorAll('.tint').forEach(t=>{
     t.addEventListener('click', ()=>{
       document.querySelectorAll('.tint').forEach(x=>x.classList.remove('active'));
@@ -523,186 +776,53 @@
       $('colFg').value = t.dataset.fg;
       $('colTitleBg').value = t.dataset.title;
       $('colTitleFg').value = t.dataset.titlefg;
-      applyColors();
+      render();
+    });
+  });
+  ['colBg','colFg','colTitleBg','colTitleFg'].forEach(id=>{
+    $(id).addEventListener('input', ()=>{
+      document.querySelectorAll('.tint').forEach(t=>t.classList.remove('active'));
+      render();
     });
   });
 
-  $('fontSelect').addEventListener('change', ()=>{
-    screenEl.style.setProperty('--scr-font', $('fontSelect').value);
-    renderLcdCanvas();
-  });
-
-  // ---- margin / background controls ----
-  const phoneCapture = document.getElementById('phoneCapture');
-  $('marginSize').addEventListener('input', ()=>{
-    phoneCapture.style.setProperty('--capture-padding', $('marginSize').value+'px');
-  });
+  // ---- background controls ----
   function syncBgToggle(){
-    const transparent = $('bgTransparent').checked;
-    $('bgColor').disabled = transparent;
-    if (transparent){
-      phoneCapture.style.backgroundColor = 'transparent';
-      phoneCapture.classList.add('bg-checker');
-    } else {
-      phoneCapture.style.backgroundColor = $('bgColor').value;
-      phoneCapture.classList.remove('bg-checker');
-    }
+    $('bgColor').disabled = $('bgTransparent').checked;
   }
-  $('bgTransparent').addEventListener('change', syncBgToggle);
+  $('bgTransparent').addEventListener('change', ()=>{ syncBgToggle(); render(); });
   $('bgColor').addEventListener('input', ()=>{
     $('bgTransparent').checked = false;
     syncBgToggle();
+    render();
   });
   syncBgToggle();
 
-  // ---- LCD effect (rendered onto a real <canvas>, so it exports exactly as previewed) ----
-  const lcdCanvas = document.getElementById('lcdCanvas');
-
-  function roundRectPath(ctx, x, y, w, h, r){
-    ctx.beginPath();
-    ctx.moveTo(x+r, y);
-    ctx.arcTo(x+w, y, x+w, y+h, r);
-    ctx.arcTo(x+w, y+h, x, y+h, r);
-    ctx.arcTo(x, y+h, x, y, r);
-    ctx.arcTo(x, y, x+w, y, r);
-    ctx.closePath();
-  }
-
-  function paintLcdEffect(ctx, w, h, intensity){
-    ctx.save();
-    // clip to the screen's own rounded corners: html2canvas doesn't reliably clip
-    // a raw <canvas> child to a parent's border-radius/overflow:hidden on export,
-    // so this canvas has to enforce its own corner shape to avoid bleeding into the bezel.
-    roundRectPath(ctx, 0, 0, w, h, 3);
-    ctx.clip();
-
-    ctx.fillStyle = `rgba(0,0,0,${0.18*intensity})`;
-    for(let sy = 0; sy < h; sy += 2){
-      ctx.fillRect(0, sy, w, 1);
-    }
-    ctx.fillStyle = `rgba(0,0,0,${0.07*intensity})`;
-    for(let sx = 0; sx < w; sx += 2){
-      ctx.fillRect(sx, 0, 1, h);
-    }
-    const glare = ctx.createLinearGradient(0, 0, w*0.6, h*0.4);
-    glare.addColorStop(0,    `rgba(255,255,255,${0.14*intensity})`);
-    glare.addColorStop(0.25, `rgba(255,255,255,${0.05*intensity})`);
-    glare.addColorStop(0.5,  `rgba(255,255,255,0)`);
-    glare.addColorStop(1,    `rgba(255,255,255,0)`);
-    ctx.fillStyle = glare;
-    ctx.fillRect(0, 0, w, h);
-
-    const cx = w/2, cy = h/2;
-    const maxR = Math.sqrt(cx*cx + cy*cy);
-    const vig = ctx.createRadialGradient(cx, cy, maxR*0.55, cx, cy, maxR);
-    vig.addColorStop(0, 'rgba(0,0,0,0)');
-    vig.addColorStop(1, `rgba(0,0,0,${0.45*intensity})`);
-    ctx.fillStyle = vig;
-    ctx.fillRect(0, 0, w, h);
-
-    ctx.restore();
-  }
-
-  function renderLcdCanvas(){
-    const rect = screenEl.getBoundingClientRect();
-    const w = Math.max(1, Math.round(rect.width));
-    const h = Math.max(1, Math.round(rect.height));
-    const dpr = EXPORT_SCALE; // matches the export scale exactly so html2canvas never has to resample this canvas (avoids moiré on the fine repeating scanline/pixel-grid pattern)
-    lcdCanvas.width = w*dpr;
-    lcdCanvas.height = h*dpr;
-    const ctx = lcdCanvas.getContext('2d');
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.clearRect(0,0,w,h);
-    if ($('lcdToggle').checked){
-      paintLcdEffect(ctx, w, h, $('lcdIntensity').value/100);
-    }
-  }
-  $('lcdToggle').addEventListener('change', renderLcdCanvas);
-  $('lcdIntensity').addEventListener('input', renderLcdCanvas);
-  window.addEventListener('resize', renderLcdCanvas);
-  new ResizeObserver(renderLcdCanvas).observe(screenEl);
-  renderLcdCanvas();
-
-  // ---- drop shadow (also rendered onto a real <canvas> — CSS box-shadow blur
-  // is unreliable in html2canvas, especially combined with border-radius) ----
-  const dropShadowCanvas = document.getElementById('dropShadowCanvas');
-  const bezelEl = document.getElementById('screenBezel');
-
-  function renderDropShadow(){
-    const capRect = phoneCapture.getBoundingClientRect();
-    const w = Math.max(1, Math.round(capRect.width));
-    const h = Math.max(1, Math.round(capRect.height));
-    const dpr = EXPORT_SCALE;
-    dropShadowCanvas.width = w*dpr;
-    dropShadowCanvas.height = h*dpr;
-    const ctx = dropShadowCanvas.getContext('2d');
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.clearRect(0,0,w,h);
-    if (!$('shadowToggle').checked) return;
-
-    const bezRect = bezelEl.getBoundingClientRect();
-    const bx = bezRect.left - capRect.left;
-    const by = bezRect.top - capRect.top;
-    const bw = bezRect.width;
-    const bh = bezRect.height;
-
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.55)';
-    ctx.shadowBlur = 34;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 18;
-    ctx.fillStyle = '#0b0c0e'; // matches the bezel's own color, so only the shadow reads visually
-    roundRectPath(ctx, bx, by, bw, bh, 14);
-    ctx.fill();
-    ctx.restore();
-  }
-  function applyShadowToggle(){
-    bezelEl.classList.toggle('with-drop-shadow', $('shadowToggle').checked);
-    renderDropShadow();
-  }
-  $('shadowToggle').addEventListener('change', applyShadowToggle);
-  window.addEventListener('resize', renderDropShadow);
-  new ResizeObserver(renderDropShadow).observe(phoneCapture);
-  new ResizeObserver(renderDropShadow).observe(bezelEl);
-  applyShadowToggle();
-
-  // keep both canvases in sync whenever something could change the bezel's size/position
-  $('marginSize').addEventListener('input', renderDropShadow);
-  ['carrier','title','page','body','softLeft','softRight','clock'].forEach(id=>{
-    $(id).addEventListener('input', renderDropShadow);
+  // ---- everything else that should trigger a re-render ----
+  ['carrier','title','page','body','softLeft','softRight','clock','marginSize','lcdIntensity'].forEach(id=>{
+    $(id).addEventListener('input', ()=>render());
   });
-  $('fontSelect').addEventListener('change', renderDropShadow);
+  ['lcdToggle','shadowToggle','fontSelect'].forEach(id=>{
+    $(id).addEventListener('change', ()=>render());
+  });
 
-  $('downloadBtn').addEventListener('click', async ()=>{
+  render(); // draw immediately with fallback fonts
+  preloadFonts(); // then again once the real webfonts are ready
+
+  $('downloadBtn').addEventListener('click', ()=>{
     const btn = $('downloadBtn');
     const originalLabel = btn.textContent;
-    btn.textContent = '이미지 생성 중…';
-    btn.disabled = true;
     try{
-      if (document.fonts && document.fonts.ready) { await document.fonts.ready; }
-      renderLcdCanvas();  // make sure the LCD canvas bitmap is current before capture
-      renderDropShadow(); // make sure the shadow canvas bitmap is current before capture
-      const target = document.getElementById('phoneCapture');
-      target.classList.remove('show-bounds');
-      target.classList.remove('bg-checker');
-      bezelEl.classList.remove('with-drop-shadow'); // CSS box-shadow blur is unreliable in html2canvas; the canvas-drawn shadow replaces it for export
-      try{
-        const canvas = await html2canvas(target, {backgroundColor:null, scale:EXPORT_SCALE});
-        const link = document.createElement('a');
-        link.download = 'keitai-mail-2001.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      }finally{
-        target.classList.add('show-bounds');
-        if ($('bgTransparent').checked) target.classList.add('bg-checker');
-        if ($('shadowToggle').checked) bezelEl.classList.add('with-drop-shadow');
-      }
+      render(true); // forExport: skip checkerboard preview + dashed bounds indicator
+      const link = document.createElement('a');
+      link.download = 'keitai-mail-2001.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
     }catch(err){
       console.error('PNG export failed:', err);
       alert('이미지 저장 중 오류가 발생했어요: ' + err.message);
     }finally{
-      btn.textContent = originalLabel;
-      btn.disabled = false;
+      render(false); // restore live-preview decorations
     }
   });
 </script>
