@@ -410,6 +410,17 @@
       <input type="text" id="clock" value="19:24" maxlength="6">
     </div>
 
+    <div class="field row2">
+      <div>
+        <label>신호 세기 <span class="hint" id="signalLevelLabel">4칸</span></label>
+        <input type="range" id="signalLevel" min="0" max="4" value="4" style="width:100%;">
+      </div>
+      <div>
+        <label>배터리 잔량 <span class="hint" id="batteryLevelLabel">70%</span></label>
+        <input type="range" id="batteryLevel" min="0" max="100" value="70" style="width:100%;">
+      </div>
+    </div>
+
     <div class="field">
       <label>여백 <span class="hint">저장 시 화면 주위 여백</span></label>
       <input type="range" id="marginSize" min="0" max="120" value="40" style="width:100%;">
@@ -530,18 +541,31 @@
     c.restore();
   }
 
-  function drawStatusIcons(c, x, y, fg){
+  function drawStatusIcons(c, x, y, fg, signalLevel, batteryLevel){
     c.save();
-    c.fillStyle = fg;
-    c.fillRect(x+0, y+7, 2, 3);
-    c.fillRect(x+3, y+5, 2, 5);
-    c.fillRect(x+6, y+3, 2, 7);
-    c.fillRect(x+9, y+0, 2, 10);
+    // signal bars: active bars filled solid, inactive bars shown dim so the "slot" is still visible
+    const barSpecs = [
+      {dx:0, h:3, dy:7},
+      {dx:3, h:5, dy:5},
+      {dx:6, h:7, dy:3},
+      {dx:9, h:10, dy:0}
+    ];
+    barSpecs.forEach((b, i) => {
+      c.fillStyle = i < signalLevel ? fg : 'rgba(128,128,128,0.35)';
+      c.fillRect(x+b.dx, y+b.dy, 2, b.h);
+    });
+    // battery outline
     c.strokeStyle = fg;
     c.lineWidth = 1;
     roundRectPath(c, x+17, y+1, 16, 8, 1);
     c.stroke();
-    c.fillRect(x+18.5, y+2.5, 10, 5);
+    // battery fill, proportional to level; low charge shown in a warning color
+    const fillW = Math.max(0, Math.min(1, batteryLevel/100)) * 10;
+    if (fillW > 0.3){
+      c.fillStyle = batteryLevel <= 15 ? '#d9463a' : fg;
+      c.fillRect(x+18.5, y+2.5, fillW, 5);
+    }
+    c.fillStyle = fg;
     c.fillRect(x+34, y+3.5, 1.5, 3);
     c.restore();
   }
@@ -656,7 +680,7 @@
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
     ctx.fillText(clock, sx+6, rowY + STATUS_H/2 + 1);
-    drawStatusIcons(ctx, sx + SCREEN_W - 6 - 36, rowY + (STATUS_H-10)/2, fg);
+    drawStatusIcons(ctx, sx + SCREEN_W - 6 - 36, rowY + (STATUS_H-10)/2, fg, parseInt($('signalLevel').value,10), parseInt($('batteryLevel').value,10));
     rowY += STATUS_H;
 
     // carrier bar
@@ -801,6 +825,14 @@
   // ---- everything else that should trigger a re-render ----
   ['carrier','title','page','body','softLeft','softRight','clock','marginSize','lcdIntensity'].forEach(id=>{
     $(id).addEventListener('input', ()=>render());
+  });
+  $('signalLevel').addEventListener('input', ()=>{
+    $('signalLevelLabel').textContent = $('signalLevel').value + '칸';
+    render();
+  });
+  $('batteryLevel').addEventListener('input', ()=>{
+    $('batteryLevelLabel').textContent = $('batteryLevel').value + '%';
+    render();
   });
   ['lcdToggle','shadowToggle','fontSelect'].forEach(id=>{
     $(id).addEventListener('change', ()=>render());
