@@ -394,6 +394,15 @@
       <textarea id="body">いつも半端にサンダルという格好の男が、今夜はスーツにマフラー姿で店に入って来た。ラックの帽子を整理していた仕事中の私は、手を休めてその男の顔を確かめた。深く被った帽子のせいで顔がよく分かるのが日頃の女の客だといつも、私の心の中では小さく舌を巻いた。しかし</textarea>
     </div>
 
+    <div class="field">
+      <label>이미지 첨부 <span class="hint">본문 아래에 표시, LCD 효과 적용됨</span></label>
+      <input type="file" id="mailImageInput" accept="image/*">
+      <div id="mailImagePreviewRow" style="display:none; margin-top:8px; align-items:center; gap:8px;">
+        <img id="mailImageThumb" style="width:40px;height:40px;object-fit:cover;border-radius:3px;border:1px solid var(--line);">
+        <button type="button" id="mailImageRemoveBtn" style="font-size:12px; padding:6px 10px; border:1px solid var(--line); border-radius:3px; background:#fff; cursor:pointer;">이미지 제거</button>
+      </div>
+    </div>
+
     <div class="field row2">
       <div>
         <label>왼쪽 소프트키</label>
@@ -463,6 +472,7 @@
   const canvas = document.getElementById('mockupCanvas');
   const ctx = canvas.getContext('2d');
   const RENDER_SCALE = 3; // internal resolution multiplier — this IS the exported resolution, live preview and download are the exact same pixels
+  let attachedImage = null; // an HTMLImageElement once the user attaches one, else null
 
   // ---------- layout constants (logical / CSS-like px) ----------
   const BEZEL_RADIUS = 14;
@@ -607,7 +617,18 @@
     // measure body wrapping using the real font
     ctx.font = `${BODY_FONT_SIZE}px ${fontStack}`;
     const lines = wrapText(ctx, bodyText, SCREEN_W - BODY_PAD_X*2);
-    const bodyContentH = lines.length * BODY_LINE_HEIGHT;
+    const textH = lines.length * BODY_LINE_HEIGHT;
+
+    let imgW = 0, imgH = 0, imgGap = 0;
+    if (attachedImage && attachedImage.naturalWidth > 0){
+      const maxW = SCREEN_W - BODY_PAD_X*2;
+      const maxH = 220;
+      const scale = Math.min(maxW/attachedImage.naturalWidth, maxH/attachedImage.naturalHeight);
+      imgW = attachedImage.naturalWidth * scale;
+      imgH = attachedImage.naturalHeight * scale;
+      imgGap = textH > 0 ? 12 : 0;
+    }
+    const bodyContentH = textH + imgGap + imgH;
     const bodyH = Math.max(BODY_MIN_HEIGHT, bodyContentH + BODY_PAD_TOP + BODY_PAD_BOTTOM);
 
     const screenH = STATUS_H + CARRIER_H + TITLE_H + bodyH + SOFT_H;
@@ -736,6 +757,18 @@
       ctx.fillText(line, sx + BODY_PAD_X, ly);
       ly += BODY_LINE_HEIGHT;
     }
+    if (imgW > 0){
+      const imgX = sx + (SCREEN_W - imgW)/2;
+      const imgY = rowY + BODY_PAD_TOP + textH + imgGap;
+      ctx.save();
+      ctx.strokeStyle = fg;
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(imgX-0.5, imgY-0.5, imgW+1, imgH+1);
+      ctx.globalAlpha = 1;
+      ctx.drawImage(attachedImage, imgX, imgY, imgW, imgH);
+      ctx.restore();
+    }
     rowY += bodyH;
 
     // soft key bar
@@ -836,6 +869,30 @@
   });
   ['lcdToggle','shadowToggle','fontSelect'].forEach(id=>{
     $(id).addEventListener('change', ()=>render());
+  });
+
+  // ---- image attachment ----
+  $('mailImageInput').addEventListener('change', (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        attachedImage = img;
+        $('mailImageThumb').src = ev.target.result;
+        $('mailImagePreviewRow').style.display = 'flex';
+        render();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  $('mailImageRemoveBtn').addEventListener('click', ()=>{
+    attachedImage = null;
+    $('mailImageInput').value = '';
+    $('mailImagePreviewRow').style.display = 'none';
+    render();
   });
 
   render(); // draw immediately with fallback fonts
