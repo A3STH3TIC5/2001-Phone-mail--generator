@@ -794,6 +794,12 @@
     // body
     ctx.fillStyle = bg;
     ctx.fillRect(sx, rowY, SCREEN_W, bodyH);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(sx, rowY, SCREEN_W, bodyH);
+    ctx.clip();
+
     ctx.fillStyle = fg;
     ctx.font = `${BODY_FONT_SIZE}px ${fontStack}`;
     ctx.textAlign = 'left';
@@ -806,15 +812,14 @@
     if (imgW > 0){
       const imgX = sx + (SCREEN_W - imgW)/2;
       const imgY = rowY + BODY_PAD_TOP + textH + imgGap;
-      ctx.save();
       ctx.strokeStyle = fg;
       ctx.globalAlpha = 0.5;
       ctx.lineWidth = 1;
       ctx.strokeRect(imgX-0.5, imgY-0.5, imgW+1, imgH+1);
       ctx.globalAlpha = 1;
       ctx.drawImage(attachedImage, imgX, imgY, imgW, imgH);
-      ctx.restore();
     }
+    ctx.restore();
     rowY += bodyH;
 
     // soft key bar
@@ -898,6 +903,12 @@
       ctx.strokeRect(sx+0.5, inputY+0.5, SCREEN_W-1, bodyH-1);
       ctx.globalAlpha = 1;
 
+      // clip text & image to the input box bounds so nothing overflows
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(sx, inputY, SCREEN_W, bodyH);
+      ctx.clip();
+
       ctx.fillStyle = '#1a1a1a';
       ctx.font = `bold ${BODY_FONT_SIZE+1}px ${fontStack}`;
       ctx.textAlign = 'left';
@@ -910,16 +921,16 @@
       if (imgW > 0){
         const imgX = sx + (SCREEN_W - imgW)/2;
         const imgY = inputY + BODY_PAD_TOP + textH + imgGap;
-        ctx.save();
         ctx.strokeStyle = '#1a1a1a';
         ctx.globalAlpha = 0.5;
         ctx.lineWidth = 1;
         ctx.strokeRect(imgX-0.5, imgY-0.5, imgW+1, imgH+1);
         ctx.globalAlpha = 1;
         ctx.drawImage(attachedImage, imgX, imgY, imgW, imgH);
-        ctx.restore();
       }
-      // scrollbar hint
+      ctx.restore();
+
+      // scrollbar hint (drawn after restore so it sits on top of the clipped content)
       ctx.fillStyle = 'rgba(255,255,255,0.6)';
       ctx.fillRect(sx+SCREEN_W-5, inputY+6, 3, Math.min(60, bodyH-12));
       rowY += bodyH;
