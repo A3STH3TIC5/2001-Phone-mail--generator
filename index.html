@@ -328,7 +328,15 @@
   <div class="panel">
     <div class="brand">au by KDDI — 2001</div>
     <h1 class="title">휴대폰 메일 화면<br>생성기</h1>
-    <p class="subtitle">2001年頃 일본 피처폰의 메일/소설 화면만 재현합니다. 값을 입력하면 오른쪽 화면이 바로 바뀝니다.</p>
+    <p class="subtitle">2000년대 초 일본/한국 피처폰의 메일 작성·열람 화면을 재현합니다. 값을 입력하면 오른쪽 화면이 바로 바뀝니다.</p>
+
+    <div class="field">
+      <label>화면 스타일</label>
+      <select id="uiStyle">
+        <option value="jp" selected>일본식 (au by KDDI, 메일 열람 화면)</option>
+        <option value="kr">한국식 (메시지 작성 화면)</option>
+      </select>
+    </div>
 
     <div class="field">
       <label>화면 색감 <span class="hint">프리셋</span></label>
@@ -338,6 +346,7 @@
         <div class="tint" data-tint="amber"  style="background:#2a1a06" data-bg="#2a1a06" data-fg="#ffb238" data-title="#4a2c07" data-titlefg="#ffd27a"></div>
         <div class="tint" data-tint="white"  style="background:#ffffff" data-bg="#ffffff" data-fg="#111111" data-title="#111111" data-titlefg="#ffffff"></div>
         <div class="tint" data-tint="pink"   style="background:#fbe3ea" data-bg="#fbe3ea" data-fg="#5a1f34" data-title="#b4527a" data-titlefg="#fff2f6"></div>
+        <div class="tint" data-tint="gold"   style="background:#fff6df" data-bg="#fff6df" data-fg="#3a2c0c" data-title="#e8b634" data-titlefg="#4a2f06"></div>
       </div>
       <div class="colorgrid">
         <label class="colorfield"><span>배경색</span><input type="color" id="colBg" value="#eef0e4"></label>
@@ -373,19 +382,21 @@
       </select>
     </div>
 
-    <div class="field">
-      <label>통신사 표시</label>
-      <input type="text" id="carrier" value="au by KDDI" maxlength="20">
-    </div>
-
-    <div class="field row2">
-      <div>
-        <label>제목</label>
-        <input type="text" id="title" value="悪夢療法" maxlength="16">
+    <div id="jpFields">
+      <div class="field">
+        <label>통신사 표시</label>
+        <input type="text" id="carrier" value="au by KDDI" maxlength="20">
       </div>
-      <div>
-        <label>페이지 <span class="hint">예: 1/4</span></label>
-        <input type="text" id="page" value="(1/4)" maxlength="8">
+
+      <div class="field row2">
+        <div>
+          <label>제목</label>
+          <input type="text" id="title" value="悪夢療法" maxlength="16">
+        </div>
+        <div>
+          <label>페이지 <span class="hint">예: 1/4</span></label>
+          <input type="text" id="page" value="(1/4)" maxlength="8">
+        </div>
       </div>
     </div>
 
@@ -403,30 +414,53 @@
       </div>
     </div>
 
-    <div class="field row2">
-      <div>
-        <label>왼쪽 소프트키</label>
-        <input type="text" id="softLeft" value="戻る" maxlength="6">
+    <div id="jpFields2">
+      <div class="field row2">
+        <div>
+          <label>왼쪽 소프트키</label>
+          <input type="text" id="softLeft" value="戻る" maxlength="6">
+        </div>
+        <div>
+          <label>오른쪽 소프트키</label>
+          <input type="text" id="softRight" value="メニュー" maxlength="6">
+        </div>
       </div>
-      <div>
-        <label>오른쪽 소프트키</label>
-        <input type="text" id="softRight" value="メニュー" maxlength="6">
+
+      <div class="field">
+        <label>시간 표시</label>
+        <input type="text" id="clock" value="19:24" maxlength="6">
+      </div>
+
+      <div class="field row2">
+        <div>
+          <label>신호 세기 <span class="hint" id="signalLevelLabel">4칸</span></label>
+          <input type="range" id="signalLevel" min="0" max="4" value="4" style="width:100%;">
+        </div>
+        <div>
+          <label>배터리 잔량 <span class="hint" id="batteryLevelLabel">70%</span></label>
+          <input type="range" id="batteryLevel" min="0" max="100" value="70" style="width:100%;">
+        </div>
       </div>
     </div>
 
-    <div class="field">
-      <label>시간 표시</label>
-      <input type="text" id="clock" value="19:24" maxlength="6">
-    </div>
-
-    <div class="field row2">
-      <div>
-        <label>신호 세기 <span class="hint" id="signalLevelLabel">4칸</span></label>
-        <input type="range" id="signalLevel" min="0" max="4" value="4" style="width:100%;">
+    <div id="krFields" style="display:none">
+      <div class="field">
+        <label>상단 타이틀</label>
+        <input type="text" id="krTitle" value="메시지 작성" maxlength="16">
       </div>
-      <div>
-        <label>배터리 잔량 <span class="hint" id="batteryLevelLabel">70%</span></label>
-        <input type="range" id="batteryLevel" min="0" max="100" value="70" style="width:100%;">
+      <div class="field">
+        <label>편지종류 텍스트</label>
+        <input type="text" id="krLetterType" value="편지종류" maxlength="16">
+      </div>
+      <div class="field row2">
+        <div>
+          <label>왼쪽 하단 텍스트</label>
+          <input type="text" id="krFooterLeft" value="메뉴" maxlength="8">
+        </div>
+        <div>
+          <label>오른쪽 하단 텍스트</label>
+          <input type="text" id="krFooterRight" value="전송" maxlength="8">
+        </div>
       </div>
     </div>
 
@@ -479,6 +513,7 @@
   const BEZEL_PAD = 10;
   const SCREEN_W = 230;
   const STATUS_H = 18, CARRIER_H = 20, TITLE_H = 30, SOFT_H = 20;
+  const KR_TITLE_H = 34, KR_LABEL_H = 24, KR_TYPE_H = 26, KR_FOOTER_H = 22;
   const BODY_PAD_TOP = 9, BODY_PAD_BOTTOM = 10, BODY_PAD_X = 8;
   const BODY_FONT_SIZE = 12.5, BODY_LINE_HEIGHT = 23, BODY_MIN_HEIGHT = 150;
 
@@ -487,6 +522,13 @@
     const n = parseInt(c.length===3 ? c.split('').map(ch=>ch+ch).join('') : c, 16);
     let r=(n>>16)&255, g=(n>>8)&255, b=n&255;
     r=Math.round(r*(1-amt)); g=Math.round(g*(1-amt)); b=Math.round(b*(1-amt));
+    return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+  }
+  function lighten(hex, amt){
+    const c = hex.replace('#','');
+    const n = parseInt(c.length===3 ? c.split('').map(ch=>ch+ch).join('') : c, 16);
+    let r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+    r=Math.round(r+(255-r)*amt); g=Math.round(g+(255-g)*amt); b=Math.round(b+(255-b)*amt);
     return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
   }
   function roundRectPath(c, x, y, w, h, r){
@@ -631,7 +673,10 @@
     const bodyContentH = textH + imgGap + imgH;
     const bodyH = Math.max(BODY_MIN_HEIGHT, bodyContentH + BODY_PAD_TOP + BODY_PAD_BOTTOM);
 
-    const screenH = STATUS_H + CARRIER_H + TITLE_H + bodyH + SOFT_H;
+    const style = $('uiStyle').value; // 'jp' or 'kr'
+    const screenH = style === 'kr'
+      ? (KR_TITLE_H + KR_LABEL_H + bodyH + KR_TYPE_H + KR_FOOTER_H)
+      : (STATUS_H + CARRIER_H + TITLE_H + bodyH + SOFT_H);
     const bezelW = SCREEN_W + BEZEL_PAD*2;
     const bezelH = BEZEL_PAD*2 + screenH;
     const margin = parseInt($('marginSize').value, 10);
@@ -689,6 +734,7 @@
     const sx = bx + BEZEL_PAD, sy = by + BEZEL_PAD;
     let rowY = sy;
 
+    if (style === 'jp'){
     // status bar
     ctx.fillStyle = statusBg;
     ctx.fillRect(sx, rowY, SCREEN_W, STATUS_H);
@@ -805,6 +851,113 @@
     ctx.textAlign = 'center';
     ctx.fillText('▶', sx+SCREEN_W-6-5.5, keyY+1);
 
+    } else {
+      // ---- Korean style: message composition screen ----
+      const krTitle = $('krTitle').value || '메시지 작성';
+      const krFooterLeft = $('krFooterLeft').value || '메뉴';
+      const krFooterRight = $('krFooterRight').value || '전송';
+      const krLetterType = $('krLetterType').value || '편지종류';
+
+      // title bar: glossy gold gradient
+      const titleGrad = ctx.createLinearGradient(sx, rowY, sx, rowY+KR_TITLE_H);
+      titleGrad.addColorStop(0, lighten(titleBg, 0.4));
+      titleGrad.addColorStop(1, titleBg);
+      ctx.fillStyle = titleGrad;
+      ctx.fillRect(sx, rowY, SCREEN_W, KR_TITLE_H);
+      ctx.fillStyle = titleFg;
+      ctx.font = `bold 15px ${fontStack}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(krTitle, sx+SCREEN_W/2, rowY+KR_TITLE_H/2+1);
+      rowY += KR_TITLE_H;
+
+      // label row
+      ctx.fillStyle = bg;
+      ctx.fillRect(sx, rowY, SCREEN_W, KR_LABEL_H);
+      ctx.fillStyle = titleBg;
+      roundRectPath(ctx, sx+7, rowY+(KR_LABEL_H-14)/2, 14, 14, 2);
+      ctx.fill();
+      ctx.fillStyle = fg;
+      ctx.font = `bold 12px ${fontStack}`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('메시지 내용', sx+7+14+6, rowY+KR_LABEL_H/2+1);
+      rowY += KR_LABEL_H;
+
+      // input box (reuses the same bodyH/lines/image measurements as the JP body row)
+      const inputY = rowY;
+      const inputGrad = ctx.createLinearGradient(sx, inputY, sx, inputY+bodyH);
+      inputGrad.addColorStop(0, '#ffffff');
+      inputGrad.addColorStop(0.55, '#ffffff');
+      inputGrad.addColorStop(1, '#7ec9e8');
+      ctx.fillStyle = inputGrad;
+      ctx.fillRect(sx, inputY, SCREEN_W, bodyH);
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(sx+0.5, inputY+0.5, SCREEN_W-1, bodyH-1);
+      ctx.globalAlpha = 1;
+
+      ctx.fillStyle = '#1a1a1a';
+      ctx.font = `bold ${BODY_FONT_SIZE+1}px ${fontStack}`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      let kly = inputY + BODY_PAD_TOP + BODY_FONT_SIZE;
+      for (const line of lines){
+        ctx.fillText(line, sx+BODY_PAD_X, kly);
+        kly += BODY_LINE_HEIGHT;
+      }
+      if (imgW > 0){
+        const imgX = sx + (SCREEN_W - imgW)/2;
+        const imgY = inputY + BODY_PAD_TOP + textH + imgGap;
+        ctx.save();
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.globalAlpha = 0.5;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(imgX-0.5, imgY-0.5, imgW+1, imgH+1);
+        ctx.globalAlpha = 1;
+        ctx.drawImage(attachedImage, imgX, imgY, imgW, imgH);
+        ctx.restore();
+      }
+      // scrollbar hint
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillRect(sx+SCREEN_W-5, inputY+6, 3, Math.min(60, bodyH-12));
+      rowY += bodyH;
+
+      // "편지종류" (letter type) row
+      ctx.fillStyle = bg;
+      ctx.fillRect(sx, rowY, SCREEN_W, KR_TYPE_H);
+      ctx.strokeStyle = shade(bg, 0.2);
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(sx, rowY+0.5); ctx.lineTo(sx+SCREEN_W, rowY+0.5); ctx.stroke();
+      ctx.fillStyle = titleBg;
+      roundRectPath(ctx, sx+7, rowY+(KR_TYPE_H-14)/2, 14, 14, 2);
+      ctx.fill();
+      ctx.fillStyle = fg;
+      ctx.font = `12px ${fontStack}`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(krLetterType, sx+7+14+6, rowY+KR_TYPE_H/2+1);
+      ctx.textAlign = 'right';
+      ctx.fillText('▸', sx+SCREEN_W-8, rowY+KR_TYPE_H/2+1);
+      rowY += KR_TYPE_H;
+
+      // footer bar
+      ctx.fillStyle = shade(bg, 0.12);
+      ctx.fillRect(sx, rowY, SCREEN_W, KR_FOOTER_H);
+      ctx.strokeStyle = shade(bg, 0.3);
+      ctx.beginPath(); ctx.moveTo(sx, rowY+0.5); ctx.lineTo(sx+SCREEN_W, rowY+0.5); ctx.stroke();
+      ctx.fillStyle = fg;
+      ctx.font = `10px ${fontStack}`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(krFooterLeft, sx+8, rowY+KR_FOOTER_H/2+1);
+      ctx.textAlign = 'right';
+      ctx.fillText(krFooterRight, sx+SCREEN_W-8, rowY+KR_FOOTER_H/2+1);
+      ctx.beginPath(); ctx.moveTo(sx+SCREEN_W/2, rowY+4); ctx.lineTo(sx+SCREEN_W/2, rowY+KR_FOOTER_H-4); ctx.stroke();
+      rowY += KR_FOOTER_H;
+    }
+
     // LCD overlay, on top of the whole screen area only
     if ($('lcdToggle').checked){
       ctx.save();
@@ -856,7 +1009,7 @@
   syncBgToggle();
 
   // ---- everything else that should trigger a re-render ----
-  ['carrier','title','page','body','softLeft','softRight','clock','marginSize','lcdIntensity'].forEach(id=>{
+  ['carrier','title','page','body','softLeft','softRight','clock','marginSize','lcdIntensity','krTitle','krFooterLeft','krFooterRight','krLetterType'].forEach(id=>{
     $(id).addEventListener('input', ()=>render());
   });
   $('signalLevel').addEventListener('input', ()=>{
@@ -870,6 +1023,16 @@
   ['lcdToggle','shadowToggle','fontSelect'].forEach(id=>{
     $(id).addEventListener('change', ()=>render());
   });
+
+  // ---- UI style switch (Japan mail-reading screen vs Korea message-composer screen) ----
+  function syncStyleFields(){
+    const isKr = $('uiStyle').value === 'kr';
+    $('jpFields').style.display = isKr ? 'none' : '';
+    $('jpFields2').style.display = isKr ? 'none' : '';
+    $('krFields').style.display = isKr ? '' : 'none';
+  }
+  $('uiStyle').addEventListener('change', ()=>{ syncStyleFields(); render(); });
+  syncStyleFields();
 
   // ---- image attachment ----
   $('mailImageInput').addEventListener('change', (e)=>{
