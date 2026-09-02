@@ -656,9 +656,12 @@
     const softLeft = $('softLeft').value || '戻る';
     const softRight = $('softRight').value || 'メニュー';
 
-    // measure body wrapping using the real font
-    ctx.font = `${BODY_FONT_SIZE}px ${fontStack}`;
-    const lines = wrapText(ctx, bodyText, SCREEN_W - BODY_PAD_X*2);
+    // measure body wrapping using the real font (must match exactly what is used when drawing)
+    const style = $('uiStyle').value; // 'jp' or 'kr'
+    const krBold = style === 'kr';
+    ctx.font = krBold ? `bold ${BODY_FONT_SIZE+1}px ${fontStack}` : `${BODY_FONT_SIZE}px ${fontStack}`;
+    const wrapMaxW = SCREEN_W - BODY_PAD_X * 2;
+    const lines = wrapText(ctx, bodyText, wrapMaxW);
     const textH = lines.length * BODY_LINE_HEIGHT;
 
     let imgW = 0, imgH = 0, imgGap = 0;
@@ -673,7 +676,6 @@
     const bodyContentH = textH + imgGap + imgH;
     const bodyH = Math.max(BODY_MIN_HEIGHT, bodyContentH + BODY_PAD_TOP + BODY_PAD_BOTTOM);
 
-    const style = $('uiStyle').value; // 'jp' or 'kr'
     const screenH = style === 'kr'
       ? (KR_TITLE_H + KR_LABEL_H + bodyH + KR_TYPE_H + KR_FOOTER_H)
       : (STATUS_H + CARRIER_H + TITLE_H + bodyH + SOFT_H);
